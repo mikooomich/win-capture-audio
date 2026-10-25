@@ -4,7 +4,7 @@
 #include "plugin-macros.generated.hpp"
 
 OBS_DECLARE_MODULE()
-OBS_MODULE_USE_DEFAULT_LOCALE("win-capture-audio", "en-GB")
+OBS_MODULE_USE_DEFAULT_LOCALE("win-capture-audio", "en-CA")
 
 extern struct obs_source_info audio_capture_info;
 

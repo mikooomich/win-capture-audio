@@ -590,6 +590,10 @@ static obs_properties_t *audio_capture_properties(void *data)
 
 	obs_property_set_modified_callback2(executable_list, executable_list_callback, ctx);
 
+	// Refresh sources button
+	auto *executables_refresh = obs_properties_add_button2(ps, SETTING_EXECUTABLES_REFRESH, TEXT_REFRESH_SOURCES,
+							       force_update_callback, data);
+
 	// Exclude setting
 	obs_properties_add_bool(ps, SETTING_EXCLUDE, TEXT_EXCLUDE);
 
@@ -605,9 +609,10 @@ static obs_properties_t *audio_capture_properties(void *data)
 	auto *active_session_add = obs_properties_add_button2(active_session_group, SETTING_ACTIVE_SESSION_ADD,
 							      TEXT_ACTIVE_SESSION_ADD, session_add_callback, data);
 
-	auto *active_session_refresh = obs_properties_add_button2(
-		active_session_group, "Refresh", "Attempt refresh sessions", session_refresh_callback, data);
-	auto *force_update = obs_properties_add_button2(ps, "ForceUpdate", "Force update", force_update_callback, data);
+	// Refresh session button
+	auto *active_session_refresh = obs_properties_add_button2(active_session_group, SETTING_ACTIVE_SESSION_REFRESH,
+								  TEXT_REFRESH_SESSIONS, session_refresh_callback,
+								  data);
 
 	ctx->FillActiveSessionList(active_session_list, active_session_add);
 

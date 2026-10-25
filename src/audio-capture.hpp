@@ -20,10 +20,12 @@
 #define SETTING_MODE                   "mode"
 
 #define SETTING_EXECUTABLE_LIST        "executable_list"
+#define SETTING_EXECUTABLES_REFRESH    "executable_list_refresh"
 
 #define SETTING_ACTIVE_SESSION_GROUP   "active_session_group"
 #define SETTING_ACTIVE_SESSION_LIST    "active_session_list"
 #define SETTING_ACTIVE_SESSION_ADD     "active_session_add"
+#define SETTING_ACTIVE_SESSION_REFRESH "active_session_refresh"
 
 #define SETTING_EXCLUDE                "exclude"
 
@@ -43,6 +45,9 @@
 
 #define TEXT_HOTKEY_START              obs_module_text("Hotkey.Start")
 #define TEXT_HOTKEY_STOP               obs_module_text("Hotkey.Stop")
+
+#define TEXT_REFRESH_SESSIONS          obs_module_text("ActiveSession.Refresh")
+#define TEXT_REFRESH_SOURCES           obs_module_text("ExecutableList.Refresh")
 
 #define HOTKEY_START                   "hotkey_start"
 #define HOTKEY_STOP                    "hotkey_stop"
