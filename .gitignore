@@ -6,6 +6,7 @@
 /release/
 /installer/Output/
 
+.vs
 .vscode
 .idea
 .cache
@@ -14,3 +15,4 @@ compile-commands.json
 
 # ignore generated files
 *.generated.*
+/out

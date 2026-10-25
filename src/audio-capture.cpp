@@ -590,11 +590,11 @@ static obs_properties_t *audio_capture_properties(void *data)
 
 	// Add session button
 	auto *active_session_add =
-		obs_properties_add_button(active_session_group, SETTING_ACTIVE_SESSION_ADD,
-					  TEXT_ACTIVE_SESSION_ADD, session_add_callback);
+		obs_properties_add_button2(active_session_group, SETTING_ACTIVE_SESSION_ADD,
+					  TEXT_ACTIVE_SESSION_ADD, session_add_callback, data);
 
-	auto *active_session_refresh = obs_properties_add_button(active_session_group, "Refresh", "Attempt refresh sessions", session_refresh_callback);
-	auto *force_update = obs_properties_add_button(ps, "ForceUpdate", "Force update", force_update_callback);
+	auto *active_session_refresh = obs_properties_add_button2(active_session_group, "Refresh", "Attempt refresh sessions", session_refresh_callback, data);
+	auto *force_update = obs_properties_add_button2(ps, "ForceUpdate", "Force update", force_update_callback, data);
 
 	ctx->FillActiveSessionList(active_session_list, active_session_add);
 
