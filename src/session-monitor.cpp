@@ -25,16 +25,15 @@ SessionMonitor *SessionMonitor::Instance()
 	return instance;
 }
 
-DeviceWatcher::DeviceWatcher(std::wstring device_id, wil::com_ptr<IMMDevice> device,
-			     DWORD worker_tid)
+DeviceWatcher::DeviceWatcher(std::wstring device_id, wil::com_ptr<IMMDevice> device, DWORD worker_tid)
 	: device_id{device_id},
 	  device{device},
 	  worker_tid{worker_tid},
 	  session_notification_client{worker_tid}
 {
 	try {
-		THROW_IF_FAILED(device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, NULL,
-					 manager2.put_void()));
+		THROW_IF_FAILED(
+			device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, NULL, manager2.put_void()));
 
 		THROW_IF_FAILED(manager2->RegisterSessionNotification(&session_notification_client));
 
@@ -54,7 +53,7 @@ DeviceWatcher::DeviceWatcher(std::wstring device_id, wil::com_ptr<IMMDevice> dev
 			if (state != AudioSessionStateExpired) {
 				session->AddRef();
 				PostThreadMessageA(worker_tid, SessionEvents::SessionAdded,
-					   reinterpret_cast<WPARAM>(session.get()), NULL);
+						   reinterpret_cast<WPARAM>(session.get()), NULL);
 			}
 		}
 	} catch (wil::ResultException e) {
@@ -68,8 +67,7 @@ DeviceWatcher::~DeviceWatcher()
 	manager2->UnregisterSessionNotification(&session_notification_client);
 }
 
-SessionWatcher::SessionWatcher(DWORD worker_tid,
-			       const wil::com_ptr<IAudioSessionControl> &session_control)
+SessionWatcher::SessionWatcher(DWORD worker_tid, const wil::com_ptr<IAudioSessionControl> &session_control)
 	: session_control{session_control}
 {
 	try {
@@ -82,11 +80,9 @@ SessionWatcher::SessionWatcher(DWORD worker_tid,
 
 		notification_client.emplace(worker_tid, SessionKey(pid, session_id));
 
-		THROW_IF_FAILED(
-			session_control->RegisterAudioSessionNotification(&notification_client.value()));
+		THROW_IF_FAILED(session_control->RegisterAudioSessionNotification(&notification_client.value()));
 
-		wil::unique_process_handle session_process{
-			OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid)};
+		wil::unique_process_handle session_process{OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid)};
 
 		if (session_process.get() == NULL) {
 			executable = std::string("unknown");
@@ -117,12 +113,10 @@ SessionWatcher::~SessionWatcher()
 void SessionMonitor::Init()
 {
 	enumerator = wil::CoCreateInstance<MMDeviceEnumerator, IMMDeviceEnumerator>();
-	THROW_IF_FAILED(
-		enumerator->RegisterEndpointNotificationCallback(&device_notification_client));
+	THROW_IF_FAILED(enumerator->RegisterEndpointNotificationCallback(&device_notification_client));
 
 	wil::com_ptr<IMMDeviceCollection> collection;
-	THROW_IF_FAILED(
-		enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, collection.put()));
+	THROW_IF_FAILED(enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, collection.put()));
 
 	UINT num_devices = 0;
 	THROW_IF_FAILED(collection->GetCount(&num_devices));
@@ -140,8 +134,7 @@ void SessionMonitor::Init()
 
 void SessionMonitor::UnInit()
 {
-	THROW_IF_FAILED(
-		enumerator->UnregisterEndpointNotificationCallback(&device_notification_client));
+	THROW_IF_FAILED(enumerator->UnregisterEndpointNotificationCallback(&device_notification_client));
 }
 
 void SessionMonitor::AddDevice(MSG msg)
@@ -155,8 +148,9 @@ void SessionMonitor::AddDevice(MSG msg)
 	EDataFlow data_flow;
 	THROW_IF_FAILED(endpoint->GetDataFlow(&data_flow));
 
-	if (data_flow == eRender)
+	if (data_flow == eRender) {
 		AddDevice(*id, device);
+	}
 
 	delete id;
 }
@@ -176,8 +170,9 @@ void SessionMonitor::RemoveDevice(MSG msg)
 
 void SessionMonitor::RemoveDevice(std::wstring id)
 {
-	if (!device_watchers.contains(id))
+	if (!device_watchers.contains(id)) {
 		return;
+	}
 
 	device_watchers.erase(id);
 	debug("removed device: %ls", id.c_str());
@@ -191,8 +186,9 @@ void SessionMonitor::AddSession(MSG msg)
 	*session_control.put() = session_control_ptr;
 
 	auto session_control2 = session_control.query<IAudioSessionControl2>();
-	if (session_control2->IsSystemSoundsSession() == S_OK)
+	if (session_control2->IsSystemSoundsSession() == S_OK) {
 		return;
+	}
 
 	std::wstring session_id;
 	DWORD pid;
@@ -206,14 +202,15 @@ void SessionMonitor::AddSession(MSG msg)
 		session_id = std::wstring(session_id_raw.get());
 		THROW_IF_FAILED(session_control2->GetProcessId(&pid));
 
-		if (session_watchers.contains({pid, session_id}))
+		if (session_watchers.contains({pid, session_id})) {
 			return;
+		}
 
-		auto [it, inserted] = session_watchers.try_emplace({pid, session_id}, worker_tid,
-								   session_control);
+		auto [it, inserted] = session_watchers.try_emplace({pid, session_id}, worker_tid, session_control);
 
-		if (!inserted)
+		if (!inserted) {
 			return;
+		}
 
 		executable = it->second.GetExecutable();
 	} catch (wil::ResultException e) {
@@ -228,8 +225,9 @@ void SessionMonitor::AddSession(MSG msg)
 
 	{
 		auto lock = callbacks_lock.lock();
-		for (auto [client_tid, msgs] : callbacks)
+		for (auto [client_tid, msgs] : callbacks) {
 			PostThreadMessageA(client_tid, std::get<0>(msgs), 0, 0);
+		}
 	}
 }
 
@@ -237,28 +235,32 @@ void SessionMonitor::RemoveSession(MSG msg)
 {
 	auto session_key = reinterpret_cast<SessionKey *>(msg.wParam);
 
-	if (!session_watchers.contains(*session_key))
+	if (!session_watchers.contains(*session_key)) {
 		return;
+	}
 
 	auto &session = session_watchers.at(*session_key);
 
 	auto executable = session.GetExecutable();
 	auto num_removed = session_watchers.erase(*session_key);
 
-	if (num_removed == 0)
+	if (num_removed == 0) {
 		return;
+	}
 
 	{
 		auto lock = sessions_lock.lock();
 		auto itr = sessions_list.find(*session_key);
-		if (itr != sessions_list.end())
+		if (itr != sessions_list.end()) {
 			sessions_list.erase(itr);
+		}
 	}
 
 	{
 		auto lock = callbacks_lock.lock();
-		for (auto [client_tid, msgs] : callbacks)
+		for (auto [client_tid, msgs] : callbacks) {
 			PostThreadMessageA(client_tid, std::get<1>(msgs), 0, 0);
+		}
 	}
 
 	delete session_key;
@@ -345,8 +347,9 @@ void SessionMonitor::UnRegisterEvent(DWORD client_tid)
 {
 	auto lock = callbacks_lock.lock();
 	auto itr = callbacks.find(client_tid);
-	if (itr != callbacks.end())
+	if (itr != callbacks.end()) {
 		callbacks.erase(itr);
+	}
 }
 
 std::unordered_map<SessionKey, std::string> SessionMonitor::GetSessions()
@@ -355,7 +358,8 @@ std::unordered_map<SessionKey, std::string> SessionMonitor::GetSessions()
 	return sessions_list;
 }
 
-void SessionMonitor::Reset() {
+void SessionMonitor::Reset()
+{
 	debug("Audio service restarted, reinitializing session/device tracking");
 	UnInit();
 	Init();

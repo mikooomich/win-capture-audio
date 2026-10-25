@@ -45,15 +45,17 @@ static std::unordered_map<DWORD, DWORD> GetProcessParents(const std::set<DWORD> 
 
 	std::unordered_map<DWORD, DWORD> parent_map;
 	while (ret) {
-		if (pids.contains(info.th32ProcessID))
+		if (pids.contains(info.th32ProcessID)) {
 			parent_map[info.th32ProcessID] = info.th32ParentProcessID;
+		}
 
 		ret = Process32NextW(handle.get(), &info);
 	}
 
 	for (auto pid : pids) {
-		if (parent_map.contains(pid))
+		if (parent_map.contains(pid)) {
 			continue;
+		}
 
 		parent_map[pid] = -1;
 	}
@@ -61,9 +63,8 @@ static std::unordered_map<DWORD, DWORD> GetProcessParents(const std::set<DWORD> 
 	return parent_map;
 }
 
-std::set<DWORD>
-AudioCapture::DeDuplicateCaptureList(const std::set<DWORD> &pids,
-				     const std::set<DWORD> &exclude_pids = std::set<DWORD>())
+std::set<DWORD> AudioCapture::DeDuplicateCaptureList(const std::set<DWORD> &pids,
+						     const std::set<DWORD> &exclude_pids = std::set<DWORD>())
 {
 	std::set<DWORD> all_pids = pids;
 	all_pids.insert(exclude_pids.begin(), exclude_pids.end());
@@ -71,27 +72,29 @@ AudioCapture::DeDuplicateCaptureList(const std::set<DWORD> &pids,
 	auto parents = GetProcessParents(all_pids);
 
 	std::set<DWORD> uncaptured_pids = pids;
-	for (auto pid : exclude_pids)
+	for (auto pid : exclude_pids) {
 		uncaptured_pids.erase(parents[pid]);
+	}
 
 	std::set<DWORD> explicitly_captured_pids;
 	std::set<DWORD> implicitly_captured_pids;
 
 	while (uncaptured_pids.size() > 0) {
 		for (auto pid : uncaptured_pids) {
-			if (uncaptured_pids.contains(parents[pid]))
+			if (uncaptured_pids.contains(parents[pid])) {
 				continue;
+			}
 
 			explicitly_captured_pids.insert(pid);
 		}
 
-		for (auto pid : explicitly_captured_pids)
+		for (auto pid : explicitly_captured_pids) {
 			uncaptured_pids.erase(pid);
+		}
 
 		auto iter = uncaptured_pids.begin();
 		while (iter != uncaptured_pids.end()) {
-			if (!explicitly_captured_pids.contains(parents[*iter]))
-			{
+			if (!explicitly_captured_pids.contains(parents[*iter])) {
 				++iter;
 				continue;
 			}
@@ -106,15 +109,17 @@ AudioCapture::DeDuplicateCaptureList(const std::set<DWORD> &pids,
 void AudioCapture::StartCapture(const std::set<DWORD> &new_pids)
 {
 	for (auto pid : pids) {
-		if (new_pids.contains(pid))
+		if (new_pids.contains(pid)) {
 			continue;
+		}
 
 		helper_manager.UnRegisterMixer(pid, &mixer.value());
 	}
 
 	for (auto new_pid : new_pids) {
-		if (pids.contains(new_pid))
+		if (pids.contains(new_pid)) {
 			continue;
+		}
 
 		helper_manager.RegisterMixer(new_pid, &mixer.value());
 	}
@@ -124,8 +129,9 @@ void AudioCapture::StartCapture(const std::set<DWORD> &new_pids)
 
 void AudioCapture::StopCapture()
 {
-	for (auto pid : pids)
+	for (auto pid : pids) {
 		helper_manager.UnRegisterMixer(pid, &mixer.value());
+	}
 
 	pids.clear();
 }
@@ -168,8 +174,8 @@ void AudioCapture::WorkerUpdate()
 		return;
 	}
 
-	StartCapture(AudioCapture::DeDuplicateCaptureList(
-		capture_pids, config.exclude ? exclude_pids : std::set<DWORD>()));
+	StartCapture(
+		AudioCapture::DeDuplicateCaptureList(capture_pids, config.exclude ? exclude_pids : std::set<DWORD>()));
 }
 
 bool AudioCapture::Tick(const MSG &msg)
@@ -233,8 +239,9 @@ void AudioCapture::Update(obs_data_t *settings)
 		.exclude = obs_data_get_bool(settings, SETTING_EXCLUDE),
 	};
 
-	if (new_config.mode == MODE_SESSION)
+	if (new_config.mode == MODE_SESSION) {
 		new_config.executables = GetExecutables(settings);
+	}
 
 	auto lock = config_section.lock();
 	config = std::move(new_config);
@@ -253,8 +260,9 @@ bool AudioCapture::IsUwpWindow(HWND window)
 {
 	wchar_t name[256] = {L'\0'};
 
-	if (!GetClassNameW(window, name, sizeof(name) / sizeof(wchar_t)))
+	if (!GetClassNameW(window, name, sizeof(name) / sizeof(wchar_t))) {
 		return false;
+	}
 
 	return wcscmp(name, L"ApplicationFrameWindow") == 0;
 }
@@ -271,8 +279,9 @@ HWND AudioCapture::GetUwpActualWindow(HWND parent_window)
 		DWORD child_pid;
 		GetWindowThreadProcessId(child_window, &child_pid);
 
-		if (child_pid != parent_pid)
+		if (child_pid != parent_pid) {
 			return child_window;
+		}
 
 		child_window = FindWindowEx(parent_window, child_window, NULL, NULL);
 	}
@@ -286,12 +295,14 @@ void AudioCapture::HotkeyStart()
 	auto config_copy = this->config;
 	lock.reset();
 
-	if (config_copy.mode != MODE_HOTKEY)
+	if (config_copy.mode != MODE_HOTKEY) {
 		return;
+	}
 
 	auto window = GetForegroundWindow();
-	if (AudioCapture::IsUwpWindow(window))
+	if (AudioCapture::IsUwpWindow(window)) {
 		window = AudioCapture::GetUwpActualWindow(window);
+	}
 
 	lock = config_section.lock();
 	config.hotkey_window = window;
@@ -303,8 +314,9 @@ void AudioCapture::HotkeyStart()
 void AudioCapture::HotkeyStop()
 {
 	auto lock = config_section.lock();
-	if (config.mode != MODE_HOTKEY)
+	if (config.mode != MODE_HOTKEY) {
 		return;
+	}
 
 	config.hotkey_window = NULL;
 	lock.reset();
@@ -314,8 +326,9 @@ void AudioCapture::HotkeyStop()
 
 static bool hotkey_start(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotkey, bool pressed)
 {
-	if (!pressed)
+	if (!pressed) {
 		return false;
+	}
 
 	auto *ctx = static_cast<AudioCapture *>(data);
 	ctx->HotkeyStart();
@@ -325,8 +338,9 @@ static bool hotkey_start(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotkey
 
 static bool hotkey_stop(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotkey, bool pressed)
 {
-	if (!pressed)
+	if (!pressed) {
 		return false;
+	}
 
 	auto *ctx = static_cast<AudioCapture *>(data);
 	ctx->HotkeyStop();
@@ -346,9 +360,8 @@ AudioCapture::AudioCapture(obs_data_t *settings, obs_source_t *source) : source{
 	SessionMonitor::Instance()->RegisterEvent(worker_tid, CaptureEvents::SessionAdded,
 						  CaptureEvents::SessionExpired);
 
-	hotkey_pair = obs_hotkey_pair_register_source(source, HOTKEY_START, TEXT_HOTKEY_START,
-						      HOTKEY_STOP, TEXT_HOTKEY_STOP, hotkey_start,
-						      hotkey_stop, this, this);
+	hotkey_pair = obs_hotkey_pair_register_source(source, HOTKEY_START, TEXT_HOTKEY_START, HOTKEY_STOP,
+						      TEXT_HOTKEY_STOP, hotkey_start, hotkey_stop, this, this);
 }
 
 static void *audio_capture_create(obs_data_t *settings, obs_source_t *source)
@@ -365,8 +378,9 @@ AudioCapture::~AudioCapture()
 {
 	SessionMonitor::Instance()->UnRegisterEvent(worker_tid);
 
-	if (!worker_thread.joinable())
+	if (!worker_thread.joinable()) {
 		return;
+	}
 
 	worker_ready.wait();
 	PostThreadMessageA(worker_tid, CaptureEvents::Shutdown, NULL, NULL);
@@ -396,8 +410,7 @@ static bool mode_callback(obs_properties_t *ps, obs_property_t *p, obs_data_t *s
 }
 
 std::tuple<std::string, std::string>
-AudioCapture::MakeSessionOptionStrings(std::set<DWORD> pids, const std::string &executable,
-				       bool added = false)
+AudioCapture::MakeSessionOptionStrings(std::set<DWORD> pids, const std::string &executable, bool added = false)
 {
 	auto pids_string = std::string();
 
@@ -406,21 +419,22 @@ AudioCapture::MakeSessionOptionStrings(std::set<DWORD> pids, const std::string &
 		pids_string.append(std::format("{}", *it));
 
 		++it;
-		for (auto end = std::end(pids); it != end; ++it)
+		for (auto end = std::end(pids); it != end; ++it) {
 			pids_string.append(std::format(", {}", *it));
+		}
 	} else {
 		pids_string.append("*");
 	}
 
-	if (!added)
+	if (!added) {
 		return {std::format("[{}] {}", pids_string, executable), executable};
+	}
 
 	static int id = 0;
 	return {std::format("[{}] {} (added)", pids_string, executable), std::format("{}", id++)};
 }
 
-static bool executable_list_callback(void *data, obs_properties_t *ps, obs_property_t *p,
-				     obs_data_t *settings)
+static bool executable_list_callback(void *data, obs_properties_t *ps, obs_property_t *p, obs_data_t *settings)
 {
 	auto *ctx = static_cast<AudioCapture *>(data);
 
@@ -496,8 +510,9 @@ void AudioCapture::FillActiveSessionList(obs_property_t *session_list, obs_prope
 	auto executables = GetExecutables(settings);
 
 	std::unordered_map<std::string, std::set<DWORD>> session_options;
-	for (auto &[key, executable] : sessions)
+	for (auto &[key, executable] : sessions) {
 		session_options[executable].insert(key.pid);
+	}
 
 	std::vector<std::tuple<std::string, std::set<DWORD>>> enabled_session_options;
 	std::vector<std::tuple<std::string, std::set<DWORD>>> disabled_session_options;
@@ -562,8 +577,7 @@ static obs_properties_t *audio_capture_properties(void *data)
 	obs_properties_t *ps = obs_properties_create();
 
 	// Mode setting (specific session or hotkey)
-	auto *mode = obs_properties_add_list(ps, SETTING_MODE, TEXT_MODE, OBS_COMBO_TYPE_LIST,
-					     OBS_COMBO_FORMAT_INT);
+	auto *mode = obs_properties_add_list(ps, SETTING_MODE, TEXT_MODE, OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 
 	obs_property_list_add_int(mode, TEXT_MODE_SESSION, MODE_SESSION);
 	obs_property_list_add_int(mode, TEXT_MODE_HOTKEY, MODE_HOTKEY);
@@ -571,9 +585,8 @@ static obs_properties_t *audio_capture_properties(void *data)
 	obs_property_set_modified_callback(mode, mode_callback);
 
 	// Executable list setting
-	auto *executable_list =
-		obs_properties_add_editable_list(ps, SETTING_EXECUTABLE_LIST, TEXT_EXECUTABLE_LIST,
-						 OBS_EDITABLE_LIST_TYPE_STRINGS, NULL, NULL);
+	auto *executable_list = obs_properties_add_editable_list(ps, SETTING_EXECUTABLE_LIST, TEXT_EXECUTABLE_LIST,
+								 OBS_EDITABLE_LIST_TYPE_STRINGS, NULL, NULL);
 
 	obs_property_set_modified_callback2(executable_list, executable_list_callback, ctx);
 
@@ -584,23 +597,23 @@ static obs_properties_t *audio_capture_properties(void *data)
 	obs_properties_t *active_session_group = obs_properties_create();
 
 	// Active session list
-	auto *active_session_list = obs_properties_add_list(
-		active_session_group, SETTING_ACTIVE_SESSION_LIST, TEXT_ACTIVE_SESSION_LIST,
-		OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	auto *active_session_list = obs_properties_add_list(active_session_group, SETTING_ACTIVE_SESSION_LIST,
+							    TEXT_ACTIVE_SESSION_LIST, OBS_COMBO_TYPE_LIST,
+							    OBS_COMBO_FORMAT_STRING);
 
 	// Add session button
-	auto *active_session_add =
-		obs_properties_add_button2(active_session_group, SETTING_ACTIVE_SESSION_ADD,
-					  TEXT_ACTIVE_SESSION_ADD, session_add_callback, data);
+	auto *active_session_add = obs_properties_add_button2(active_session_group, SETTING_ACTIVE_SESSION_ADD,
+							      TEXT_ACTIVE_SESSION_ADD, session_add_callback, data);
 
-	auto *active_session_refresh = obs_properties_add_button2(active_session_group, "Refresh", "Attempt refresh sessions", session_refresh_callback, data);
+	auto *active_session_refresh = obs_properties_add_button2(
+		active_session_group, "Refresh", "Attempt refresh sessions", session_refresh_callback, data);
 	auto *force_update = obs_properties_add_button2(ps, "ForceUpdate", "Force update", force_update_callback, data);
 
 	ctx->FillActiveSessionList(active_session_list, active_session_add);
 
 	// Active session group
-	obs_properties_add_group(ps, SETTING_ACTIVE_SESSION_GROUP, TEXT_ACTIVE_SESSION_GROUP,
-				 OBS_GROUP_NORMAL, active_session_group);
+	obs_properties_add_group(ps, SETTING_ACTIVE_SESSION_GROUP, TEXT_ACTIVE_SESSION_GROUP, OBS_GROUP_NORMAL,
+				 active_session_group);
 
 	return ps;
 }

@@ -21,8 +21,8 @@
 
 using namespace Microsoft::WRL;
 
-struct CompletionHandler : public RuntimeClass<RuntimeClassFlags<ClassicCom>, FtmBase,
-					       IActivateAudioInterfaceCompletionHandler> {
+struct CompletionHandler
+	: public RuntimeClass<RuntimeClassFlags<ClassicCom>, FtmBase, IActivateAudioInterfaceCompletionHandler> {
 	wil::com_ptr<IAudioClient> client;
 
 	HRESULT activate_hr = E_FAIL;
@@ -37,8 +37,9 @@ struct CompletionHandler : public RuntimeClass<RuntimeClassFlags<ClassicCom>, Ft
 
 		RETURN_IF_FAILED(operation->GetActivateResult(&activate_hr, client.put_unknown()));
 
-		if (FAILED(activate_hr))
+		if (FAILED(activate_hr)) {
 			error("activate failed (0x%lx)", activate_hr);
+		}
 
 		return S_OK;
 	}

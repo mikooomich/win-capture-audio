@@ -44,8 +44,9 @@ public:
 
 		try {
 			auto [it, inserted] = helpers.try_emplace(pid, mixer, format, pid);
-			if (!inserted)
+			if (!inserted) {
 				it->second.RegisterMixer(mixer);
+			}
 		} catch (wil::ResultException e) {
 			error("failed to create helper... update Windows?");
 			error("%s", e.what());
@@ -57,11 +58,13 @@ public:
 		auto lock = helpers_section.lock();
 
 		auto it = helpers.find(pid);
-		if (it == helpers.end())
+		if (it == helpers.end()) {
 			return;
+		}
 
 		auto remove_helper = it->second.UnRegisterMixer(mixer);
-		if (remove_helper)
+		if (remove_helper) {
 			helpers.erase(it);
+		}
 	};
 };

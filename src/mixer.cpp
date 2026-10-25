@@ -21,8 +21,9 @@ UINT64 Mixer::GetCurrentTimestamp()
 	LARGE_INTEGER timestamp_ticks;
 	static LARGE_INTEGER frequency = {0};
 
-	if (frequency.QuadPart == 0)
+	if (frequency.QuadPart == 0) {
 		QueryPerformanceFrequency(&frequency);
+	}
 
 	QueryPerformanceCounter(&timestamp_ticks);
 	return timestamp_ticks.QuadPart * (10000000 / frequency.QuadPart);
@@ -56,11 +57,13 @@ void Mixer::ProcessInput(UINT64 input_timestamp, std::vector<float> &input_buffe
 
 	auto offset = format.nChannels * DurationToFrames(input_timestamp - mix_timestamp);
 
-	if (offset + input_buffer.size() > mix.size())
+	if (offset + input_buffer.size() > mix.size()) {
 		mix.resize(offset + input_buffer.size());
+	}
 
-	for (std::size_t i = 0; i < input_buffer.size(); ++i)
+	for (std::size_t i = 0; i < input_buffer.size(); ++i) {
 		mix[offset + i] += input_buffer[i];
+	}
 }
 
 void Mixer::ProcessInput()
@@ -76,8 +79,9 @@ void Mixer::ProcessInput()
 
 std::size_t Mixer::TimestampToMixOffset(UINT64 timestamp)
 {
-	if (timestamp < mix_timestamp)
+	if (timestamp < mix_timestamp) {
 		return 0;
+	}
 
 	auto frames = DurationToFrames(timestamp - mix_timestamp);
 	return (frames < mix.size() / format.nChannels) ? frames : mix.size() / format.nChannels;
@@ -85,11 +89,13 @@ std::size_t Mixer::TimestampToMixOffset(UINT64 timestamp)
 
 std::tuple<std::size_t, std::size_t> Mixer::CalculateCutoff(UINT64 timestamp)
 {
-	if (timestamp < cutoff_end)
+	if (timestamp < cutoff_end) {
 		return {0, 0};
+	}
 
-	if (timestamp < cutoff_start)
+	if (timestamp < cutoff_start) {
 		return {0, TimestampToMixOffset(timestamp - cutoff_end)};
+	}
 
 	auto start = TimestampToMixOffset(timestamp - cutoff_start);
 	auto end = TimestampToMixOffset(timestamp - cutoff_end);
@@ -101,8 +107,9 @@ void Mixer::Tick()
 {
 	ProcessInput();
 
-	if (mix.size() == 0)
+	if (mix.size() == 0) {
 		return;
+	}
 
 	UINT64 current_timestamp = GetCurrentTimestamp();
 	auto [start, end] = CalculateCutoff(current_timestamp);
@@ -110,8 +117,9 @@ void Mixer::Tick()
 	if (start * format.nChannels >= mix.size()) {
 		mix.clear();
 		return;
-	} else if (end - start == 0)
+	} else if (end - start == 0) {
 		return;
+	}
 
 	obs_source_audio obs_packet = {
 		.frames = static_cast<UINT32>(end - start),
@@ -182,8 +190,8 @@ Mixer::Mixer(obs_source_t *source, WAVEFORMATEX format) : source{source}, format
 	int64_t tid_64 = worker_tid;
 
 	SetThreadPriority(worker_thread.native_handle(), THREAD_PRIORITY_HIGHEST);
-	CreateTimerQueueTimer(&timer, NULL, post_tick, reinterpret_cast<void *>(tid_64),
-			      tick_interval, tick_interval, WT_EXECUTEINTIMERTHREAD);
+	CreateTimerQueueTimer(&timer, NULL, post_tick, reinterpret_cast<void *>(tid_64), tick_interval, tick_interval,
+			      WT_EXECUTEINTIMERTHREAD);
 }
 
 Mixer::~Mixer()
